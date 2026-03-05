@@ -1,0 +1,209 @@
+#!/usr/bin/python3
+
+# name: nad_pscy (stands for "Plesk Server Check")
+# purpose: Do a check of resources and domain use for a Plesk server.
+# date: 2/22/2025, 7:49:00 PM
+# author: elemental88keys
+# status: v. 1: Scans for CPU, Memory, and SWAP health and checks if domains are going over their disk space and traffic limits on their service plans.
+
+# [0] Important imports...
+import psutil, statistics, time, subprocess
+
+def asking_for_help():
+    print("Usage: python3 new_pscy.py [OPTIONS]")
+    print("OPTIONS:")
+    print("-h, --help\t\tShow this help message and exit")
+    print("-l, --log\t\tLog the check you've just made")
+    print("Here's an example: nad_psc -h")
+    print("Here's a logging example: nad_psc -l <log_file>")
+    print("If you need to see this again, just write 'nad_psc -h' at the command line")
+
+def cpu_load(percentage):
+    match percentage:
+        case x if x < 70:
+            print("CPU Status: HEALTHY")
+        case _:
+            print("CPU Status: NOT HEALTHY")
+
+# [1] Getting CPU information...
+print("Getting CPU information...")
+cpu_percentages = [psutil.cpu_percent(interval=1) for i in range (10)]
+cpu_percent_avg = statistics.mean(cpu_percentages)
+cpu_load(cpu_percent_avg)
+
+# [2] Getting RAM information...
+def mem_load(percentage):
+    match percentage:
+        case x if x < 70:
+            print("MEM Status: HEALTHY")
+        case _:
+            print("MEM Status: NOT HEALTHY")
+
+def mem_monitor(interval=1, amount=10):
+    print(f"Getting RAM information...")
+    mem_readings = []
+    for i in range(0, amount):
+        mem = psutil.virtual_memory()
+        mem_reading = {
+            "percentage": mem.percent,
+            "used": mem.used,
+            "total": mem.total
+        }
+        mem_readings.append(mem_reading)
+        time.sleep(interval)
+
+    return mem_readings
+
+mem_monitor_results = mem_monitor()
+mem_percentages = [mem_monitor_results[i]["percentage"] for i in range(10)]
+mem_percent_avg = statistics.mean(mem_percentages)
+mem_load(mem_percent_avg)
+
+# [3] Getting Swap Information...
+def swap_load(percentage):
+    match percentage:
+        case x if x < 70:
+            print("SWAP Status: HEALTHY")
+        case _:
+            print("SWAP Status: NOT HEALTHY")
+
+def swap_monitor(interval=1, amount=10):
+    print("Getting SWAP information...")
+    swap_readings = []
+    for i in range(0, amount):
+        swap = psutil.swap_memory()
+        swap_reading = {
+            "percentage": swap.percent,
+            "used": swap.used,
+            "total": swap.total
+        }
+        swap_readings.append(swap_reading)
+        time.sleep(interval)
+
+    return swap_readings
+
+swap_monitor_results = swap_monitor()
+swap_percentages = [swap_monitor_results[i]["percentage"] for i in range(10)]
+swap_percent_avg = statistics.mean(swap_percentages)
+swap_load(swap_percent_avg)
+
+# [4] Plesk Checks...
+# [4-1] Service plan checks...
+# [4-1-1] Getting a list of all the subscriptions on the server...
+subscription_list = subprocess.run(["sudo", "plesk", "bin", "subscription", "--list"], capture_output=True, text=True).stdout.split('\n')
+def sum_disk_space(disk_space_list):
+    total_disk_space = 0
+    for disk_space in disk_space_list:
+        disk_space_value, disk_space_unit = disk_space.split()
+        if disk_space_unit == "B": total_disk_space += float(disk_space_value) / 1024 / 1024 / 1024
+        elif disk_space_unit == "KB": total_disk_space += float(disk_space_value) / 1024 / 1024
+        elif disk_space_unit == "MB": total_disk_space += float(disk_space_value) / 1024
+        elif disk_space_unit == "GB": total_disk_space += float(disk_space_value)
+        elif disk_space_unit == "TB": total_disk_space += float(disk_space_value) * 1024
+        elif disk_space_unit == "unlimited": return "unlimited"
+        else: return "ERROR: UNRECOGNIZED UNIT"
+    return f"{round(total_disk_space, 2)} GB"
+
+def compare_disk_space(sp_disk_space, actual_disk_space):
+    sp_disk_space_value, sp_disk_space_unit = sp_disk_space.split()
+    actual_disk_space_value, actual_disk_space_unit = actual_disk_space.split()
+    if sp_disk_space_unit == actual_disk_space_unit:
+        if float(actual_disk_space_value) <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "B" and actual_disk_space_unit == "KB":
+        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "KB" and actual_disk_space_unit == "MB":
+        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "MB" and actual_disk_space_unit == "GB":
+        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "GB" and actual_disk_space_unit == "MB":
+        if float(actual_disk_space_value) / 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "GB" and actual_disk_space_unit == "TB":
+        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "TB" and actual_disk_space_unit == "GB":
+        if float(actual_disk_space_value) / 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "MB" and actual_disk_space_unit == "TB":
+        if float(actual_disk_space_value) * 1024 * 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "TB" and actual_disk_space_unit == "MB":
+        if float(actual_disk_space_value) / 1024 / 1024 <= float(sp_disk_space_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_disk_space_unit == "unlimited":
+        return "HEALTHY"
+    elif actual_disk_space_unit == "unlimited":
+        return "NOT HEALTHY"
+    else: return "ERROR: UNRECOGNIZED UNIT"
+
+def compare_traffic(sp_traffic, actual_traffic):
+    sp_traffic_value, sp_traffic_unit = sp_traffic.split()
+    actual_traffic_value, actual_traffic_unit = actual_traffic.split()
+    actual_traffic_unit = actual_traffic_unit.replace('Month','month')
+    if sp_traffic_unit == actual_traffic_unit:
+        if float(actual_traffic_value) <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "B/month" and actual_traffic_unit == "B/month":
+        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "B/month" and actual_traffic_unit == "KB/month":
+        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "KB/month" and actual_traffic_unit == "MB/month":
+        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "MB/month" and actual_traffic_unit == "GB/month":
+        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "GB/month" and actual_traffic_unit == "B/month":
+        if float(actual_traffic_value) / 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "GB/month" and actual_traffic_unit == "MB/month":
+        if float(actual_traffic_value) / 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "GB/month" and actual_traffic_unit == "TB/month":
+        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "TB/month" and actual_traffic_unit == "GB/month":
+        if float(actual_traffic_value) / 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "MB/month" and actual_traffic_unit == "TB/month":
+        if float(actual_traffic_value) * 1024 * 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "TB/month" and actual_traffic_unit == "MB/month":
+        if float(actual_traffic_value) / 1024 / 1024 <= float(sp_traffic_value): return "HEALTHY"
+        else: return "NOT HEALTHY"
+    elif sp_traffic_unit == "unlimited":
+        return "HEALTHY"
+    elif actual_traffic_unit == "unlimited":
+        return "NOT HEALTHY"
+    else: return "ERROR: UNRECOGNIZED UNIT"
+
+for subscription in subscription_list:
+    # [4-1-2] Getting the service plan for each subscription...
+    sp_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "NAD ITS - Tier" | cut -d ' ' -f 9-13 | sed 's/"//g' '''
+    subscription_service_plan = subprocess.run(sp_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    # print(subscription, subscription_service_plan)
+    if subscription_service_plan != '':
+        sp_info_ds_cmd = f'''sudo plesk bin service_plan --info "{subscription_service_plan}" | head -n 47 | tail -n 33 | grep "Disk space" | awk '{{print $3, $4}}' '''
+        tier_sp_disk_space = subprocess.run(sp_info_ds_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+        # print(tier_sp_disk_space)
+        sp_info_trf_cmd = f''' sudo plesk bin service_plan --info "{subscription_service_plan}" | head -n 47 | tail -n 33 | grep "Traffic" | awk '{{print $2, $3}}' '''
+        tier_sp_traffic = subprocess.run(sp_info_trf_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+        # print(tier_sp_traffic)
+        actual_info_ds_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "Disk space used by " | awk '{{print $(NF-1), $NF}}' | sed 's/reports://g' '''
+        actual_info_ds = subprocess.run(actual_info_ds_cmd, shell=True, capture_output=True, text=True).stdout.strip().split('\n')
+        # print(actual_info_ds)
+        # print(f"Actual disk space for {subscription}: {actual_info_ds}")
+        actual_info_trf_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "Traffic:" | awk '{{print $2, $3}}' '''
+        actual_info_trf = subprocess.run(actual_info_trf_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+        # print(actual_info_trf)
+        # print(len(actual_info_ds))
+        if len(actual_info_ds) <= 1 and actual_info_ds[0] == '': ds_result = "ERROR: COULD NOT GET ACTUAL DISK SPACE"
+        else: ds_result = compare_disk_space(tier_sp_disk_space, sum_disk_space(actual_info_ds))
+        trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
+        print(f"{subscription} - Disk Space: {ds_result} | Traffic: {trf_result}")
