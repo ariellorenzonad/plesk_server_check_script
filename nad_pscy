@@ -185,7 +185,7 @@ def compare_traffic(sp_traffic, actual_traffic):
 
 for subscription in subscription_list:
     # [4-1-2] Getting the service plan for each subscription...
-    sp_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "NAD ITS - Tier" | cut -d ' ' -f 9-13 | sed 's/"//g' '''
+    sp_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "[plesk_service_plan_name_goes_here]" | cut -d ' ' -f 9-13 | sed 's/"//g' '''
     subscription_service_plan = subprocess.run(sp_cmd, shell=True, capture_output=True, text=True).stdout.strip()
     # print(subscription, subscription_service_plan)
     if subscription_service_plan != '':
@@ -206,4 +206,5 @@ for subscription in subscription_list:
         if len(actual_info_ds) <= 1 and actual_info_ds[0] == '': ds_result = "ERROR: COULD NOT GET ACTUAL DISK SPACE"
         else: ds_result = compare_disk_space(tier_sp_disk_space, sum_disk_space(actual_info_ds))
         trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
+
         print(f"{subscription} - Disk Space: {ds_result} | Traffic: {trf_result}")
