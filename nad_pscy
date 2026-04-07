@@ -7,7 +7,7 @@
 # status: v. 1: Scans for CPU, Memory, and SWAP health and checks if domains are going over their disk space and traffic limits on their service plans.
 
 # [0] Important imports...
-import psutil, statistics, time, subprocess
+import psutil, statistics, time, subprocess, math
 
 def asking_for_help():
     print("Usage: python3 new_pscy.py [OPTIONS]")
@@ -104,92 +104,40 @@ def sum_disk_space(disk_space_list):
         else: return "ERROR: UNRECOGNIZED UNIT"
     return f"{round(total_disk_space, 2)} GB"
 
+def convert_bytes(value, unit):
+    # PURPOSE: Converts the value of disk space or traffic to bytes for easier comparison. It takes in the value and unit as parameters and returns the value in bytes. If the unit is "unlimited", it returns infinity. If an unrecognized unit is encountered, it returns an error message.
+    if unit in ["B", "B/month"]: return float(value)
+    elif unit in ["KB", "KB/month"]: return float(value) * 1024
+    elif unit in ["MB", "MB/month"]: return float(value) * pow(1024,2)
+    elif unit in ["GB", "GB/month"]: return float(value) * pow(1024,3)
+    elif unit in ["TB", "TB/month"]: return float(value) * pow(1024,4)
+    elif unit == "unlimited": return float('inf')
+    else: return -1
+
 def compare_disk_space(sp_disk_space, actual_disk_space):
-    '''
-    PURPOSE: Compares the disk space limit of the service plan to the actual disk space used by the subscription to determine if it's healthy or not.
-    This is achieved by first splitting the disk space and unit for both the service plan and the actual disk space, then comparing the units and converting them to the same unit if necessary before comparing the values.
-    If the actual disk space used is less than or equal to the service plan limit, it returns "HEALTHY", otherwise it returns "NOT HEALTHY".
-    If either of the units is "unlimited", it handles those cases accordingly. If an unrecognized unit is encountered, it returns an error message.
-    '''
     if len(sp_disk_space) == 0 or len(actual_disk_space) == 0: return "ERROR: COULD NOT GET DISK SPACE INFORMATION"
     sp_disk_space_value, sp_disk_space_unit = sp_disk_space.split()
     actual_disk_space_value, actual_disk_space_unit = actual_disk_space.split()
-    if sp_disk_space_unit == actual_disk_space_unit:
-        if float(actual_disk_space_value) <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "B" and actual_disk_space_unit == "KB":
-        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "KB" and actual_disk_space_unit == "MB":
-        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "MB" and actual_disk_space_unit == "GB":
-        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "GB" and actual_disk_space_unit == "MB":
-        if float(actual_disk_space_value) / 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "GB" and actual_disk_space_unit == "TB":
-        if float(actual_disk_space_value) * 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "TB" and actual_disk_space_unit == "GB":
-        if float(actual_disk_space_value) / 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "MB" and actual_disk_space_unit == "TB":
-        if float(actual_disk_space_value) * 1024 * 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "TB" and actual_disk_space_unit == "MB":
-        if float(actual_disk_space_value) / 1024 / 1024 <= float(sp_disk_space_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_disk_space_unit == "unlimited":
-        return "HEALTHY"
-    elif actual_disk_space_unit == "unlimited":
-        return "NOT HEALTHY"
-    else: return "ERROR: UNRECOGNIZED UNIT"
+    sp_disk_space_value = convert_bytes(sp_disk_space_value, sp_disk_space_unit)
+    actual_disk_space_value = convert_bytes(actual_disk_space_value, actual_disk_space_unit)
+    if sp_disk_space_value == -1 or actual_disk_space_value == -1: return "ERROR: UNRECOGNIZED UNIT"
+    elif sp_disk_space_value == float('inf'): return "HEALTHY"
+    elif actual_disk_space_value == float('inf'): return "NOT HEALTHY"
+    elif actual_disk_space_value <= sp_disk_space_value: return "HEALTHY"
+    else: return "NOT HEALTHY"
 
 def compare_traffic(sp_traffic, actual_traffic):
     if len(sp_traffic) == 0 or len(actual_traffic) == 0: return "ERROR: COULD NOT GET TRAFFIC INFORMATION"
     sp_traffic_value, sp_traffic_unit = sp_traffic.split()
     actual_traffic_value, actual_traffic_unit = actual_traffic.split()
     actual_traffic_unit = actual_traffic_unit.replace('Month','month')
-    if sp_traffic_unit == actual_traffic_unit:
-        if float(actual_traffic_value) <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "B/month" and actual_traffic_unit == "B/month":
-        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "B/month" and actual_traffic_unit == "KB/month":
-        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "KB/month" and actual_traffic_unit == "MB/month":
-        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "MB/month" and actual_traffic_unit == "GB/month":
-        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "GB/month" and actual_traffic_unit == "B/month":
-        if float(actual_traffic_value) / 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "GB/month" and actual_traffic_unit == "MB/month":
-        if float(actual_traffic_value) / 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "GB/month" and actual_traffic_unit == "TB/month":
-        if float(actual_traffic_value) * 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "TB/month" and actual_traffic_unit == "GB/month":
-        if float(actual_traffic_value) / 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "MB/month" and actual_traffic_unit == "TB/month":
-        if float(actual_traffic_value) * 1024 * 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "TB/month" and actual_traffic_unit == "MB/month":
-        if float(actual_traffic_value) / 1024 / 1024 <= float(sp_traffic_value): return "HEALTHY"
-        else: return "NOT HEALTHY"
-    elif sp_traffic_unit == "unlimited":
-        return "HEALTHY"
-    elif actual_traffic_unit == "unlimited":
-        return "NOT HEALTHY"
-    else: return "ERROR: UNRECOGNIZED UNIT"
+    sp_traffice_value = convert_bytes(sp_traffic_value, sp_traffic_unit)
+    actual_traffic_value = convert_bytes(actual_traffic_value, actual_traffic_unit)
+    if sp_traffice_value == -1 or actual_traffic_value == -1: return "ERROR: UNRECOGNIZED UNIT"
+    elif sp_traffice_value == float('inf'): return "HEALTHY"
+    elif actual_traffic_value == float('inf'): return "NOT HEALTHY"
+    elif actual_traffic_value <= sp_traffice_value: return "HEALTHY"
+    else: return "NOT HEALTHY"
 
 def check_domain_update_status(domain_name):
     """
