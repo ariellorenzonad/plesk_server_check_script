@@ -9,6 +9,7 @@
 # [0] Important imports...
 import psutil, statistics, time, subprocess, math
 
+print(" -- System Resource Check -- ")
 def asking_for_help():
     print("Usage: python3 new_pscy.py [OPTIONS]")
     print("OPTIONS:")
@@ -148,6 +149,8 @@ def check_domain_update_status(domain_name):
     """
     pass
 
+print()
+print(" -- Service Plan Checks -- ")
 for subscription in subscription_list:
     # [4-1-2] Getting the service plan for each subscription...
     sp_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "NAD ITS - Tier" | cut -d ' ' -f 9-13 | sed 's/"//g' '''
@@ -174,6 +177,27 @@ for subscription in subscription_list:
         trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
         print(f"{subscription} - Disk Space: {ds_result} | Traffic: {trf_result}")
 
-# WP-Toolkit Check...
+# WP-Toolkit Check..
+print()
+print(" -- WordPress Updates Check -- ")
+def format_output(array):
+    ''' Outputs any array input into a viewable and pleasing table. '''
+    if not array: return ""
+    return " | ".join(array)
+
 plesk_wp_toolkit_command = """sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | sed 's/https:\/\///g'"""
-print(subprocess.run(plesk_wp_toolkit_command, shell=True, capture_output=True, text=True).stdout)
+wp_toolkit_output = subprocess.run(plesk_wp_toolkit_command, shell=True, capture_output=True, text=True).stdout.split()
+wp_toolkit_output = [wp_toolkit_output[i:i+3] for i in range(0, len(wp_toolkit_output), 3)][1:len(wp_toolkit_output)-1]
+for piece_of_output in wp_toolkit_output:
+    # Getting the usernames for the owners of the domains that need to be updated...
+    subscription_info_cmd = f'''sudo plesk bin subscription -i "{piece_of_output[2]}" | grep "Owner's contact name:" | awk '{{print $NF}}' | sed 's/(//g' | sed 's/)//g' '''
+    subscription_info_output = subprocess.run(subscription_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.append(subscription_info_output)
+
+    # Getting the emails for the owners of the domains that need to be updated...
+    owner_info_cmd = f'''sudo plesk bin client -i "{piece_of_output[3]}" | grep "Email" | awk '{{print $NF}}' '''
+    owner_info_output = subprocess.run(owner_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.append(owner_info_output)
+
+    # Print output...
+    print(format_output(piece_of_output))
