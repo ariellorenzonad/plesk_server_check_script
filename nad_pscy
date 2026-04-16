@@ -199,5 +199,10 @@ for piece_of_output in wp_toolkit_output:
     owner_info_output = subprocess.run(owner_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
     piece_of_output.append(owner_info_output)
 
+    # Getting the names of the owners of the domains that need to be updated...
+    owner_name_cmd = f'''sudo plesk bin client -i "{piece_of_output[3]}" | grep "Personal name:" | cut -d: -f2- | xargs'''
+    owner_name_cmd_output = subprocess.run(owner_name_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.append(owner_name_cmd_output)
+
     # Print output...
     print(format_output(piece_of_output))
