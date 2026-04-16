@@ -173,3 +173,7 @@ for subscription in subscription_list:
         # print(tier_sp_disk_space, actual_info_trf)
         trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
         print(f"{subscription} - Disk Space: {ds_result} | Traffic: {trf_result}")
+
+# WP-Toolkit Check...
+plesk_wp_toolkit_command = """sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | sed 's/https:\/\///g'"""
+print(subprocess.run(plesk_wp_toolkit_command, shell=True, capture_output=True, text=True).stdout)
