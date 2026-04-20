@@ -185,24 +185,34 @@ def format_output(array):
     if not array: return ""
     return " | ".join(array)
 
-plesk_wp_toolkit_command = """sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | sed 's/https:\/\///g'"""
+plesk_wp_toolkit_command = """sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | grep Outdated | sed 's/https:\/\///g'"""
 wp_toolkit_output = subprocess.run(plesk_wp_toolkit_command, shell=True, capture_output=True, text=True).stdout.split()
 wp_toolkit_output = [wp_toolkit_output[i:i+3] for i in range(0, len(wp_toolkit_output), 3)][1:len(wp_toolkit_output)-1]
 for piece_of_output in wp_toolkit_output:
     # Getting the usernames for the owners of the domains that need to be updated...
+    piece_of_output[2] = piece_of_output[2].replace("www.","")
     subscription_info_cmd = f'''sudo plesk bin subscription -i "{piece_of_output[2]}" | grep "Owner's contact name:" | awk '{{print $NF}}' | sed 's/(//g' | sed 's/)//g' '''
     subscription_info_output = subprocess.run(subscription_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
     piece_of_output.append(subscription_info_output)
 
     # Getting the emails for the owners of the domains that need to be updated...
-    owner_info_cmd = f'''sudo plesk bin client -i "{piece_of_output[3]}" | grep "Email" | awk '{{print $NF}}' '''
-    owner_info_output = subprocess.run(owner_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
-    piece_of_output.append(owner_info_output)
+    customer_owner_info_cmd = f'''sudo plesk bin client -i "{piece_of_output[3]}" | grep "Email" | awk '{{print $NF}}' '''
+    customer_owner_info_output = subprocess.run(customer_owner_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.insert(0, customer_owner_info_output)
+
+    reseller_owner_info_cmd = f'''sudo plesk bin reseller -i "{piece_of_output[4]}" | grep "Email" | awk '{{print $NF}}' '''
+    reseller_owner_info_output = subprocess.run(reseller_owner_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.insert(0, reseller_owner_info_output)
 
     # Getting the names of the owners of the domains that need to be updated...
-    owner_name_cmd = f'''sudo plesk bin client -i "{piece_of_output[3]}" | grep "Personal name:" | cut -d: -f2- | xargs'''
-    owner_name_cmd_output = subprocess.run(owner_name_cmd, shell=True, capture_output=True, text=True).stdout.strip()
-    piece_of_output.append(owner_name_cmd_output)
+    # print(piece_of_output)
+    customer_owner_name_cmd = f'''sudo plesk bin client -i "{piece_of_output[5]}" | grep "Personal name:" | cut -d: -f2- | xargs'''
+    customer_owner_name_cmd_output = subprocess.run(customer_owner_name_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.insert(0, customer_owner_name_cmd_output)
+
+    reseller_owner_name_cmd = f'''sudo plesk bin reseller -i "{piece_of_output[6]}" | grep "Personal name:" | cut -d: -f2- | xargs'''
+    reseller_owner_name_cmd_output = subprocess.run(reseller_owner_name_cmd, shell=True, capture_output=True, text=True).stdout.strip()
+    piece_of_output.insert(0, reseller_owner_name_cmd_output)
 
     # Print output...
     print(format_output(piece_of_output))
