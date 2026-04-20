@@ -177,13 +177,43 @@ for subscription in subscription_list:
         trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
         print(f"{subscription} - Disk Space: {ds_result} | Traffic: {trf_result}")
 
+from typing import Any,List
+
+def longest_per_column(data: List[List[Any]]) -> List[int]:
+    """
+    Returns a list where each index contains the length
+    of the longest string in that column.
+
+    Runs in O(n) time where n = total number of elements.
+    """
+    if not data:
+        return []
+
+    # Determine max number of columns
+    col_count = max(len(row) for row in data)
+
+    # Initialize max lengths
+    max_lengths = [0] * col_count
+
+    # Single pass through all cells
+    for row in data:
+        for col_index, value in enumerate(row):
+            length = len(str(value))
+            if length > max_lengths[col_index]:
+                max_lengths[col_index] = length
+
+    return max_lengths
+
 # WP-Toolkit Check..
 print()
 print(" -- WordPress Updates Check -- ")
-def format_output(array):
-    ''' Outputs any array input into a viewable and pleasing table. '''
-    if not array: return ""
-    return " | ".join(array)
+
+def print_outdated_table(array: List[List[Any]]) -> List[int]:
+    column_lengths = [i if i > 0 else 5 for i in longest_per_column(array)]
+    print("Reseller Name".ljust(column_lengths[0]), "Customer Name".ljust(column_lengths[1]), "Reseller Email".ljust(column_lengths[2]), "Customer Email".ljust(column_lengths[3]), "State".ljust(column_lengths[5]), "URL".ljust(column_lengths[6]))
+    print("--".ljust(column_lengths[0]), "--".ljust(column_lengths[1]), "--".ljust(column_lengths[2]), "--".ljust(column_lengths[3]), "--".ljust(column_lengths[5]), "--".ljust(column_lengths[6]))
+    for row in array:
+        print(row[0].ljust(column_lengths[0]), row[1].ljust(column_lengths[1]), row[2].ljust(column_lengths[2]), row[3].ljust(column_lengths[3]), row[5].ljust(column_lengths[5]), row[6].ljust(column_lengths[6]))
 
 plesk_wp_toolkit_command = r"""sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | grep Outdated | sed 's/https:\/\/\///g'"""
 wp_toolkit_output = subprocess.run(plesk_wp_toolkit_command, shell=True, capture_output=True, text=True).stdout.split()
@@ -215,4 +245,7 @@ for piece_of_output in wp_toolkit_output:
     piece_of_output.insert(0, reseller_owner_name_cmd_output)
 
     # Print output...
-    print(format_output(piece_of_output))
+    # print(format_output(piece_of_output))
+
+# print(longest_per_column(wp_toolkit_output))
+print(print_outdated_table(wp_toolkit_output))
