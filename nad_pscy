@@ -4,7 +4,7 @@
 # purpose: Do a check of resources and domain use for a Plesk server.
 # date: 2/22/2025, 7:49:00 PM
 # author: elemental88keys
-# status: v. 1: Scans for CPU, Memory, and SWAP health and checks if domains are going over their disk space and traffic limits on their service plans.
+# status: v. 2: In addition to doing system resource and service plan checks, outdated WordPress components for domains are checked as well, then indicated in a list with the domain owner's name and email.
 
 # [0] Important imports...
 import psutil, statistics, time, subprocess, math
