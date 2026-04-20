@@ -209,7 +209,7 @@ print()
 print(" -- WordPress Updates Check -- ")
 
 def print_outdated_table(array: List[List[Any]]) -> List[int]:
-    column_lengths = [i if i > 0 else 5 for i in longest_per_column(array)]
+    column_lengths = [i if i > 0 else 25 for i in longest_per_column(array)]
     print("Reseller Name".ljust(column_lengths[0]), "Customer Name".ljust(column_lengths[1]), "Reseller Email".ljust(column_lengths[2]), "Customer Email".ljust(column_lengths[3]), "State".ljust(column_lengths[5]), "URL".ljust(column_lengths[6]))
     print("--".ljust(column_lengths[0]), "--".ljust(column_lengths[1]), "--".ljust(column_lengths[2]), "--".ljust(column_lengths[3]), "--".ljust(column_lengths[5]), "--".ljust(column_lengths[6]))
     for row in array:
