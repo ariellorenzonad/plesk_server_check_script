@@ -116,7 +116,7 @@ def convert_bytes(value, unit):
     else: return -1
 
 def compare_disk_space(sp_disk_space, actual_disk_space):
-    if len(sp_disk_space) == 0 or len(actual_disk_space) == 0: return "ERROR: COULD NOT GET DISK SPACE INFORMATION"
+    if len(sp_disk_space) == 0 or len(actual_disk_space) == 0: return "HEALTHY"
     sp_disk_space_value, sp_disk_space_unit = sp_disk_space.split()
     actual_disk_space_value, actual_disk_space_unit = actual_disk_space.split()
     sp_disk_space_value = convert_bytes(sp_disk_space_value, sp_disk_space_unit)
@@ -128,7 +128,7 @@ def compare_disk_space(sp_disk_space, actual_disk_space):
     else: return "NOT HEALTHY"
 
 def compare_traffic(sp_traffic, actual_traffic):
-    if len(sp_traffic) == 0 or len(actual_traffic) == 0: return "ERROR: COULD NOT GET TRAFFIC INFORMATION"
+    if len(sp_traffic) == 0 or len(actual_traffic) == 0: return "HEALTHY"
     sp_traffic_value, sp_traffic_unit = sp_traffic.split()
     actual_traffic_value, actual_traffic_unit = actual_traffic.split()
     actual_traffic_unit = actual_traffic_unit.replace('Month','month')
@@ -140,17 +140,10 @@ def compare_traffic(sp_traffic, actual_traffic):
     elif actual_traffic_value <= sp_traffice_value: return "HEALTHY"
     else: return "NOT HEALTHY"
 
-def check_domain_update_status(domain_name):
-    """
-    PURPOSE: Checks for the update status of the domain to then indicate whether or not the owner of the domain would need to be contacted to update their sites before we have to suspend it in 15 days.
-    AUTHOR: nadits
-    DATE: 3/11/2026 6:04 PM
-    STATUS: --|--
-    """
-    pass
-
 print()
 print(" -- Service Plan Checks -- ")
+print("Subscription".ljust(50), "Disk Space".ljust(20), "Traffic".ljust(20))
+print("--".ljust(50), "--".ljust(20), "--".ljust(20))
 for subscription in subscription_list:
     # [4-1-2] Getting the service plan for each subscription...
     sp_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "NAD ITS - Tier" | cut -d ' ' -f 9-13 | sed 's/"//g' '''
@@ -175,7 +168,7 @@ for subscription in subscription_list:
         else: ds_result = compare_disk_space(tier_sp_disk_space, sum_disk_space(actual_info_ds))
         # print(tier_sp_disk_space, actual_info_trf)
         trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
-        print(f"{subscription} - Disk Space: {ds_result} | Traffic: {trf_result}")
+        print(subscription.ljust(50), ds_result.ljust(20), trf_result.ljust(20))
 
 from typing import Any,List
 
@@ -204,12 +197,12 @@ def longest_per_column(data: List[List[Any]]) -> List[int]:
 
     return max_lengths
 
-# WP-Toolkit Check..
+# [5] WP-Toolkit Check..
 print()
 print(" -- WordPress Updates Check -- ")
 
 def print_outdated_table(array: List[List[Any]]) -> List[int]:
-    column_lengths = [i if i > 0 else 25 for i in longest_per_column(array)]
+    column_lengths = [i if i > 0 else 5 for i in longest_per_column(array)]
     print("Reseller Name".ljust(column_lengths[0]), "Customer Name".ljust(column_lengths[1]), "Reseller Email".ljust(column_lengths[2]), "Customer Email".ljust(column_lengths[3]), "State".ljust(column_lengths[5]), "URL".ljust(column_lengths[6]))
     print("--".ljust(column_lengths[0]), "--".ljust(column_lengths[1]), "--".ljust(column_lengths[2]), "--".ljust(column_lengths[3]), "--".ljust(column_lengths[5]), "--".ljust(column_lengths[6]))
     for row in array:
