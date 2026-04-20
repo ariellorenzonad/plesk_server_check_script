@@ -185,12 +185,12 @@ def format_output(array):
     if not array: return ""
     return " | ".join(array)
 
-plesk_wp_toolkit_command = """sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | grep Outdated | sed 's/https:\/\///g'"""
+plesk_wp_toolkit_command = r"""sudo plesk ext wp-toolkit --list | awk '{print $3,$5,$8}' | column -t | grep -v Working | grep Outdated | sed 's/https:\/\/\///g'"""
 wp_toolkit_output = subprocess.run(plesk_wp_toolkit_command, shell=True, capture_output=True, text=True).stdout.split()
 wp_toolkit_output = [wp_toolkit_output[i:i+3] for i in range(0, len(wp_toolkit_output), 3)][1:len(wp_toolkit_output)-1]
 for piece_of_output in wp_toolkit_output:
     # Getting the usernames for the owners of the domains that need to be updated...
-    piece_of_output[2] = piece_of_output[2].replace("www.","")
+    piece_of_output[2] = piece_of_output[2].replace("https://www.","")
     subscription_info_cmd = f'''sudo plesk bin subscription -i "{piece_of_output[2]}" | grep "Owner's contact name:" | awk '{{print $NF}}' | sed 's/(//g' | sed 's/)//g' '''
     subscription_info_output = subprocess.run(subscription_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
     piece_of_output.append(subscription_info_output)
