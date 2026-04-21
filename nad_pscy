@@ -20,11 +20,8 @@ def asking_for_help():
     print("If you need to see this again, just write 'nad_psc -h' at the command line")
 
 def cpu_load(percentage):
-    match percentage:
-        case x if x < 70:
-            print("CPU Status: HEALTHY")
-        case _:
-            print("CPU Status: NOT HEALTHY")
+    if percentage < 70: print("CPU Status: HEALTHY")
+    else: print("CPU Status: NOT HEALTHY")
 
 # [1] Getting CPU information...
 print("Getting CPU information...")
@@ -34,11 +31,8 @@ cpu_load(cpu_percent_avg)
 
 # [2] Getting RAM information...
 def mem_load(percentage):
-    match percentage:
-        case x if x < 70:
-            print("MEM Status: HEALTHY")
-        case _:
-            print("MEM Status: NOT HEALTHY")
+    if percentage < 70: print("MEM Status: HEALTHY")
+    else: print("MEM Status: HEALTHY")
 
 def mem_monitor(interval=1, amount=10):
     print(f"Getting RAM information...")
@@ -62,11 +56,8 @@ mem_load(mem_percent_avg)
 
 # [3] Getting Swap Information...
 def swap_load(percentage):
-    match percentage:
-        case x if x < 70:
-            print("SWAP Status: HEALTHY")
-        case _:
-            print("SWAP Status: NOT HEALTHY")
+    if percentage < 70: print("SWAP Status: HEALTHY")
+    else: print("SWAP Status: NOT HEALTHY")
 
 def swap_monitor(interval=1, amount=10):
     print("Getting SWAP information...")
@@ -142,8 +133,8 @@ def compare_traffic(sp_traffic, actual_traffic):
 
 print()
 print(" -- Service Plan Checks -- ")
-print("Subscription".ljust(50), "Disk Space".ljust(20), "Traffic".ljust(20))
-print("--".ljust(50), "--".ljust(20), "--".ljust(20))
+print("Subscription".ljust(50), "Disk Space".ljust(50), "Traffic".ljust(50))
+print("--".ljust(50), "--".ljust(50), "--".ljust(50))
 for subscription in subscription_list:
     # [4-1-2] Getting the service plan for each subscription...
     sp_cmd = f'''sudo plesk bin subscription -i "{subscription}" | grep "NAD ITS - Tier" | cut -d ' ' -f 9-13 | sed 's/"//g' '''
@@ -168,7 +159,7 @@ for subscription in subscription_list:
         else: ds_result = compare_disk_space(tier_sp_disk_space, sum_disk_space(actual_info_ds))
         # print(tier_sp_disk_space, actual_info_trf)
         trf_result = compare_traffic(tier_sp_traffic, actual_info_trf)
-        print(subscription.ljust(50), ds_result.ljust(20), trf_result.ljust(20))
+        print(subscription.ljust(50), ds_result.ljust(50), trf_result.ljust(50))
 
 from typing import Any,List
 
@@ -202,7 +193,7 @@ print()
 print(" -- WordPress Updates Check -- ")
 
 def print_outdated_table(array: List[List[Any]]) -> List[int]:
-    column_lengths = [i if i > 0 else 5 for i in longest_per_column(array)]
+    column_lengths = [i if i > 0 else 25 for i in longest_per_column(array)]
     print("Reseller Name".ljust(column_lengths[0]), "Customer Name".ljust(column_lengths[1]), "Reseller Email".ljust(column_lengths[2]), "Customer Email".ljust(column_lengths[3]), "State".ljust(column_lengths[5]), "URL".ljust(column_lengths[6]))
     print("--".ljust(column_lengths[0]), "--".ljust(column_lengths[1]), "--".ljust(column_lengths[2]), "--".ljust(column_lengths[3]), "--".ljust(column_lengths[5]), "--".ljust(column_lengths[6]))
     for row in array:
@@ -214,6 +205,7 @@ wp_toolkit_output = [wp_toolkit_output[i:i+3] for i in range(0, len(wp_toolkit_o
 for piece_of_output in wp_toolkit_output:
     # Getting the usernames for the owners of the domains that need to be updated...
     piece_of_output[2] = piece_of_output[2].replace("https://www.","")
+    piece_of_output[2] = piece_of_output[2].replace("https://","")
     subscription_info_cmd = f'''sudo plesk bin subscription -i "{piece_of_output[2]}" | grep "Owner's contact name:" | awk '{{print $NF}}' | sed 's/(//g' | sed 's/)//g' '''
     subscription_info_output = subprocess.run(subscription_info_cmd, shell=True, capture_output=True, text=True).stdout.strip()
     piece_of_output.append(subscription_info_output)
